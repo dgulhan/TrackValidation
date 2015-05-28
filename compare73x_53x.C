@@ -34,8 +34,8 @@ void plotEff(bool do_highpurity=true)
  TH1D::SetDefaultSumw2();
  
  double eta_cut=2.4;
- double pt_cut=10;
- double pt_cut_high=100;
+ double pt_cut=0.5;
+ double pt_cut_high=200;
  TCut cut_fake = "trkFake==1";
  TCut cut_eff = "mtrkPt>0";
  TCut cut_fake_highpurity, cut_eff_highpurity;
@@ -94,15 +94,22 @@ void plotEff(bool do_highpurity=true)
  
   TFile *inf53x = new TFile("/mnt/hadoop/cms/store/user/dgulhan/PYTHIA_HYDJET_Track9_Jet30_Pyquen_DiJet_TuneZ2_Unquenched_Hydjet1p8_2760GeV_merged/HiForest_PYTHIA_HYDJET_pthat80_Track9_Jet30_matchEqR_merged_forest_0.root");
    // TFile *inf74x = new TFile("../../merge74x/HiForest_PyquenUnquenched_pthat80_74x_merged.root");
-  TFile *inf74x = new TFile("/mnt/hadoop/cms/store/user/dgulhan/HiForest_Dijet_pthat80_740pre6_BS_merged/HiForest_Dijet_pthat80_740pre6_BS.root");
+  TFile *inf74x_run1 = new TFile("/mnt/hadoop/cms/store/user/dgulhan/HiForest_Dijet_pthat80_740pre8_run1_merged/HiForest_Dijet_pthat80_740pre8_run1_merged.root");
+  TFile *inf74x = new TFile("/mnt/hadoop/cms/store/user/dgulhan/HiForest_Ncoll_Dijet_pthat80_740pre8_MCHI2_74_V3_mergedx2/HiForest_Ncoll_Dijet_pthat80_740pre8_MCHI2_74_V3_merged_forest_0.root");
   TTree *ttrack53x = (TTree*)inf53x->Get("anaTrack/trackTree");
   TTree *ttrack74x = (TTree*)inf74x->Get("anaTrack/trackTree");
+  TTree *ttrack74x_run1 = (TTree*)inf74x_run1->Get("anaTrack/trackTree");
   TTree *tgen53x = (TTree*)inf53x->Get("HiGenParticleAna/hi");
   TTree *tgen74x = (TTree*)inf74x->Get("HiGenParticleAna/hi");
+  TTree *tgen74x_run1 = (TTree*)inf74x_run1->Get("HiGenParticleAna/hi");
   TTree *thi53x = (TTree*)inf53x->Get("hiEvtAnalyzer/HiTree");
   TTree *thi74x = (TTree*)inf74x->Get("hiEvtAnalyzer/HiTree");
+  TTree *thi74x_run1 = (TTree*)inf74x_run1->Get("hiEvtAnalyzer/HiTree");
+  ttrack74x_run1->AddFriend(tgen74x_run1);
   ttrack74x->AddFriend(tgen74x);
   ttrack53x->AddFriend(tgen53x);
+  ttrack53x->AddFriend(tgen53x);
+  ttrack74x_run1->AddFriend(thi74x_run1);
   ttrack74x->AddFriend(thi74x);
   ttrack53x->AddFriend(thi53x); 
 
@@ -110,21 +117,29 @@ void plotEff(bool do_highpurity=true)
   if(i==0) c->SetLogx();
   TH1D* h = new TH1D("h","",nx,x);
   TH1D* h2 = new TH1D("h2","",nx,x);
+  TH1D* h3 = new TH1D("h3","",nx,x);
   TH1D* h_denom = new TH1D("h_denom","",nx,x);
   TH1D* h2_denom = new TH1D("h2_denom","",nx,x);
+  TH1D* h3_denom = new TH1D("h3_denom","",nx,x);
 
   h2->SetLineColor(2);
   h2->SetMarkerColor(2);
+  h3->SetLineColor(4);
+  h3->SetMarkerColor(4);
   h->SetXTitle(Form("%s",axis[i].Data()));
   h->SetYTitle("Reconstruction Efficiency");
-  ttrack53x->Draw(Form("%s>>h",var_gen[i].Data()),cut_eff&&cut_eff_highpurity,"",5000);
+  ttrack53x->Draw(Form("%s>>h",var_gen[i].Data()),cut_eff&&cut_eff_highpurity,"");
   ttrack74x->Draw(Form("%s>>h2",var_gen[i].Data()),cut_eff&&cut_eff_highpurity,"");
-  ttrack53x->Draw(Form("%s>>h_denom",var_gen[i].Data()),Form("abs(pEta)<%.1f && pPt>%.1f&& pPt<%.1f",eta_cut,pt_cut,pt_cut_high),"",5000);
-  ttrack74x->Draw(Form("%s>>h2_denom",var_gen[i].Data()),Form("abs(pEta)<%.1f && pPt>%.1f&& pPt<%.1f",eta_cut,pt_cut,pt_cut_high),"");
+  ttrack74x_run1->Draw(Form("%s>>h3",var_gen[i].Data()),cut_eff&&cut_eff_highpurity,"");
+  ttrack53x->Draw(Form("%s>>h_denom",var_gen[i].Data()),cut_eff_highpurity);
+  ttrack74x->Draw(Form("%s>>h2_denom",var_gen[i].Data()),cut_eff_highpurity);
+  ttrack74x_run1->Draw(Form("%s>>h3_denom",var_gen[i].Data()),cut_eff_highpurity);
   h->Divide(h_denom);
   h2->Divide(h2_denom);
+  h3->Divide(h3_denom);
   h->Draw();
   h2->Draw("same");
+  // h3->Draw("same");
   h->SetAxisRange(0,1.2,"Y");
 
 
@@ -134,6 +149,7 @@ void plotEff(bool do_highpurity=true)
   leg->SetFillStyle(0);
   leg->AddEntry("h","53x 2.76 TeV","pl");
   leg->AddEntry("h2","74x 5.02 TeV","pl");
+  // leg->AddEntry("h3","74x run1 5.02 TeV","pl");
   leg->Draw("same");
   if(do_highpurity)drawText("high purity",0.55,0.9);
   else drawText("no quality cut",0.55,0.9);
@@ -148,24 +164,32 @@ void plotEff(bool do_highpurity=true)
   if(i==0)cFake->SetLogx();
   TH1D* hF = new TH1D("hF","",nx,x);
   TH1D* hF2 = new TH1D("hF2","",nx,x);
+  TH1D* hF3 = new TH1D("hF3","",nx,x);
   TH1D* hF_denom = new TH1D("hF_denom","",nx,x);
   TH1D* hF2_denom = new TH1D("hF2_denom","",nx,x);
+  TH1D* hF3_denom = new TH1D("hF3_denom","",nx,x);
   hF2->SetLineColor(2);
   hF2->SetMarkerColor(2);
+  hF3->SetLineColor(4);
+  hF3->SetMarkerColor(4);
   hF->SetXTitle(Form("%s",axis[i].Data()));
   hF->SetYTitle("Fake Rate");
   h->SetXTitle(Form("%s",axis[i].Data()));
   h->SetYTitle("Reconstruction Efficiency");
  
-  ttrack53x->Draw(Form("%s>>hF",var_reco[i].Data()),cut_fake&&cut_fake_highpurity,"",5000);
+  ttrack53x->Draw(Form("%s>>hF",var_reco[i].Data()),cut_fake&&cut_fake_highpurity,"");
   ttrack74x->Draw(Form("%s>>hF2",var_reco[i].Data()),cut_fake&&cut_fake_highpurity,"");
-  ttrack53x->Draw(Form("%s>>hF_denom",var_reco[i].Data()),Form("abs(trkEta)<%.1f && trkPt>%.1f&& trkPt<%.1f",eta_cut,pt_cut,pt_cut_high),"",5000);
-  ttrack74x->Draw(Form("%s>>hF2_denom",var_reco[i].Data()),Form("abs(trkEta)<%.1f && trkPt>%.1f&& trkPt<%.1f",eta_cut,pt_cut,pt_cut_high),"");
+  ttrack74x_run1->Draw(Form("%s>>hF3",var_reco[i].Data()),cut_fake&&cut_fake_highpurity,"");
+  ttrack53x->Draw(Form("%s>>hF_denom",var_reco[i].Data()),cut_fake_highpurity);
+  ttrack74x->Draw(Form("%s>>hF2_denom",var_reco[i].Data()),cut_fake_highpurity);
+  ttrack74x_run1->Draw(Form("%s>>hF3_denom",var_reco[i].Data()),cut_fake_highpurity);
   hF->Divide(hF_denom);
   hF2->Divide(hF2_denom);
+  hF3->Divide(hF3_denom);
   hF->SetAxisRange(0,1.2,"Y");
   hF->Draw();
   hF2->Draw("same");
+  // hF3->Draw("same");
   leg->Draw("same");
 
   if(do_highpurity)drawText("high purity",0.55,0.9);
@@ -181,8 +205,10 @@ void plotEff(bool do_highpurity=true)
    TFile * outf = new TFile("outf.root","recreate");
    hF_denom->Write();
    hF2_denom->Write();
+   hF3_denom->Write();
    h_denom->Write();
    h2_denom->Write();
+   h3_denom->Write();
    outf->Close();
   }
  }
